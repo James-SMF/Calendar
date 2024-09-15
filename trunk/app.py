@@ -72,19 +72,31 @@ class ScheduleApp:
         self.refresh_events()
 
     def update_event(self, event_id):
+        ''' 更新事件 '''
+        event_data = self.db.get_event_by_id(event_id)
+        if event_data:
+            evt = event_data[0]
+            original_date, original_time, original_description = evt.date, evt.time, evt.event
+        else:
+            messagebox.showerror("Error", "Event not found!")
+            return
+
         update_window = tk.Toplevel(self.root)
         update_window.title("Update Event")
 
         tk.Label(update_window, text="New Date:").pack()
         new_date_entry = DateEntry(update_window, date_pattern="yyyy-mm-dd")  # DateEntry
+        new_date_entry.set_date(original_date)
         new_date_entry.pack()
 
         tk.Label(update_window, text="New Time (HH:MM):").pack()
         new_time_entry = tk.Entry(update_window)
+        new_time_entry.insert(0, original_time)
         new_time_entry.pack()
 
         tk.Label(update_window, text="New Event Description:").pack()
         new_desc_entry = tk.Entry(update_window)
+        new_desc_entry.insert(0, original_description)
         new_desc_entry.pack()
 
         update_button = tk.Button(update_window, text="Update", command=lambda: self.perform_update(event_id, new_desc_entry.get(), new_date_entry.get(), new_time_entry.get(), update_window))
@@ -196,12 +208,22 @@ class ScheduleApp:
                 checkbox_text = f"{routine[5]} ({routine[1]})"  # 事件 频率
                 tk.Checkbutton(checklist_frame, text=checkbox_text, variable=var).pack(anchor='w')
 
-        delete_button = tk.Button(delete_routine_window, text="Delete Selected",
-                                  command=lambda: self.delete_selected_routines(delete_routine_window))
-        delete_button.pack()
-        self.refresh_events()
+        button_frame = tk.Frame(delete_routine_window)
+        button_frame.pack(pady=10)
 
-    def delete_selected_routines(self, window):
+        delete_button = tk.Button(button_frame, text="仅删除Routine",
+                                  command=lambda: self.delete_selected_routines(delete_routine_window))
+        delete_button.pack(side=tk.LEFT, padx=10)
+
+        delete_with_event_button = tk.Button(button_frame, text="同时从日程中删除",
+                                        command=lambda: self.delete_selected_routines(
+                                            delete_routine_window, delete_from_events=True
+                                        )
+                                    )
+        delete_with_event_button.pack(side=tk.LEFT, padx=10)
+
+
+    def delete_selected_routines(self, window, delete_from_events=False):
         """ 删除玩家选中的周期性事件 """
         to_delete = [routine for var, routine in self.selected_routines if var.get()]
 
@@ -211,6 +233,11 @@ class ScheduleApp:
         for routine in to_delete:
             frequency, description = routine[1], routine[5]
             self.db.delete_routine(frequency, description)
+
+            if delete_from_events:
+                next_event = self.db.get_next_event(frequency, description)[0]
+                if next_event:
+                    self.db.remove(next_event.eid)
 
         window.destroy()
         self.refresh_events()
