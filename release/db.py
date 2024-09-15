@@ -40,6 +40,14 @@ class dbapi:
             events.append(event)
         return events
 
+    def get_event_by_id(self, event_id):
+        cursor = self.db.execute('SELECT eid, event, date, time FROM events WHERE eid = ?', (event_id,))
+        events = []
+        for row in cursor:
+            event = Event(row[0], row[1], row[2], row[3])
+            events.append(event)
+        return events
+
     def update_event(self, event_id, new_event, new_date, new_time):
         self.db.execute('UPDATE events SET event = ?, date = ?, time = ? WHERE eid = ?', (new_event, new_date, new_time, event_id))
         self.db.commit()
@@ -81,6 +89,21 @@ class dbapi:
     def delete_routine(self, frequency, description):
         self.db.execute('DELETE FROM routines WHERE frequency = ? AND description = ?', (frequency, description))
         self.db.commit()
+
+    def get_next_event(self, frequency, description):
+        events = []
+        with self.db:
+            result = self.db.execute("""
+                SELECT * FROM events
+                WHERE event=? AND date >= DATE('now')
+                ORDER BY date ASC, time ASC LIMIT 1
+            """, (description,))
+
+            for row in result:
+                event = Event(row[0], row[1], row[2], row[3])
+                events.append(event)
+
+        return events
 
     def check_and_add_next_routine(self):
         today = datetime.date.today()
