@@ -1,0 +1,218 @@
+import tkinter as tk
+from tkcalendar import DateEntry  # ??DateEntry
+from tkinter import messagebox
+
+class ScheduleApp:
+    def __init__(self, root, db):
+        self.db = db
+        self.root = root
+        self.root.title("奶奶的日程提醒")
+        self.root.geometry("500x600")
+        self.root.option_add('*Button.foreground', 'black')
+
+        # 创建小部件
+        self.create_widgets()
+
+        # 刷新事件列表
+        self.refresh_events()
+
+    def create_widgets(self):
+        tk.Label(self.root, text="Select Date:").pack()
+        self.date_entry = DateEntry(self.root, date_pattern="yyyy-mm-dd")
+        self.date_entry.pack()
+
+        tk.Label(self.root, text="Time (HH:MM):").pack()
+        self.time_entry = tk.Entry(self.root)
+        self.time_entry.pack()
+
+        tk.Label(self.root, text="Description:").pack()
+        self.desc_entry = tk.Entry(self.root)
+        self.desc_entry.pack()
+
+        add_button = tk.Button(self.root, text="Add Event", command=self.add_event)
+        add_button.pack()
+
+        self.events_frame = tk.Frame(self.root)
+        self.events_frame.pack()
+
+    def add_event(self):
+        date = self.date_entry.get()  # 获取选中的日期
+        time = self.time_entry.get()
+        description = self.desc_entry.get()
+        eid_set = self.db.get_all_eid()
+        eid = self.db.generate_new_eid(eid_set)
+
+        self.db.add(eid, description, date, time)
+
+        #  self.date_entry.set_date("")  # 清空日期选择器
+        self.time_entry.delete(0, tk.END)
+        self.desc_entry.delete(0, tk.END)
+        self.refresh_events()
+
+    def refresh_events(self):
+        for widget in self.events_frame.winfo_children():
+            widget.destroy()
+
+        events = self.db.get_events()
+        for event in events:
+            event_frame = tk.Frame(self.events_frame)
+            event_frame.pack()
+
+            event_label = tk.Label(event_frame, text=f"{event.date} {event.time}  {event.event}", anchor='w')
+            event_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+            delete_button = tk.Button(event_frame, text="Delete", command=lambda e_id=event.eid: self.delete_event(e_id))
+            delete_button.pack(side=tk.LEFT, padx=5)
+
+            update_button = tk.Button(event_frame, text="Update", command=lambda e_id=event.eid: self.update_event(e_id))
+            update_button.pack(side=tk.LEFT, padx=5)
+
+    def delete_event(self, event_id):
+        self.db.remove(event_id)
+        self.refresh_events()
+
+    def update_event(self, event_id):
+        update_window = tk.Toplevel(self.root)
+        update_window.title("Update Event")
+
+        tk.Label(update_window, text="New Date:").pack()
+        new_date_entry = DateEntry(update_window, date_pattern="yyyy-mm-dd")  # DateEntry
+        new_date_entry.pack()
+
+        tk.Label(update_window, text="New Time (HH:MM):").pack()
+        new_time_entry = tk.Entry(update_window)
+        new_time_entry.pack()
+
+        tk.Label(update_window, text="New Event Description:").pack()
+        new_desc_entry = tk.Entry(update_window)
+        new_desc_entry.pack()
+
+        update_button = tk.Button(update_window, text="Update", command=lambda: self.perform_update(event_id, new_desc_entry.get(), new_date_entry.get(), new_time_entry.get(), update_window))
+        update_button.pack()
+
+    def perform_update(self, event_id, event, new_date, new_time, update_window):
+        self.db.update_event(event_id, event, new_date, new_time)
+        update_window.destroy()
+        self.refresh_events()
+
+    ############################ 周期性任务相关函数 ############################
+
+    def create_widgets(self):
+        button_frame = tk.Frame(self.root)
+        button_frame.pack()
+
+        add_routine_button = tk.Button(button_frame, text="Add Recurring Event", command=self.open_add_routine_window, fg='black')
+        add_routine_button.pack(side=tk.LEFT, padx=10)
+
+        delete_routine_button = tk.Button(button_frame, text="Delete Recurring Event", command=self.open_delete_routine_window, fg='black')
+        delete_routine_button.pack(side=tk.LEFT, padx=10)
+
+        tk.Label(self.root, text="Select Date:").pack()
+        self.date_entry = DateEntry(self.root, date_pattern="yyyy-mm-dd")
+        self.date_entry.pack()
+
+        tk.Label(self.root, text="Time (HH:MM):").pack()
+        self.time_entry = tk.Entry(self.root)
+        self.time_entry.pack()
+
+        tk.Label(self.root, text="Description:").pack()
+        self.desc_entry = tk.Entry(self.root)
+        self.desc_entry.pack()
+
+        add_button = tk.Button(self.root, text="Add Event", command=self.add_event)
+        add_button.pack()
+
+        self.events_frame = tk.Frame(self.root)
+        self.events_frame.pack()
+
+    def open_add_routine_window(self):
+
+        '''打开添加周期性任务的窗口'''
+
+        routine_window = tk.Toplevel(self.root)
+        routine_window.title("Add Recurring Event")
+
+        tk.Label(routine_window, text="Description:").pack()
+        desc_entry = tk.Entry(routine_window)
+        desc_entry.pack()
+
+        tk.Label(routine_window, text="Time (HH:MM):").pack()
+        time_entry = tk.Entry(routine_window)
+        time_entry.pack()
+
+        tk.Label(routine_window, text="Frequency:").pack()
+        frequency_var = tk.StringVar(value="weekly")
+        weekly_radiobutton = tk.Radiobutton(routine_window, text="Weekly", variable=frequency_var, value="weekly")
+        weekly_radiobutton.pack()
+        monthly_radiobutton = tk.Radiobutton(routine_window, text="Monthly", variable=frequency_var, value="monthly")
+        monthly_radiobutton.pack()
+
+        tk.Label(routine_window, text="Day of Week (1: Mon - 7: Sun) or Day of Month:").pack()
+        day_entry = tk.Entry(routine_window)
+        day_entry.pack()
+
+        confirm_button = tk.Button(routine_window, text="Confirm",
+                                   command=lambda: self.add_routine(frequency_var.get(), day_entry.get(), time_entry.get(), desc_entry.get(), routine_window))
+        confirm_button.pack()
+        self.db.check_and_add_next_routine()
+        self.refresh_events()
+
+    def add_routine(self, frequency, day, time, description, window):
+        if not day.isdigit():
+            messagebox.showerror("Input Error", "Day must be a number.")
+            return
+
+        day = int(day)
+        if frequency == "weekly":
+            if day < 1 or day > 7:
+                messagebox.showerror("Input Error", "Day of the week must be between 1 and 7.")
+                return
+            self.db.add_routine(frequency="weekly", day_of_week=day, day_of_month=None, time=time, description=description)
+        elif frequency == "monthly":
+            if day < 1 or day > 31:
+                messagebox.showerror("Input Error", "Day of the month must be between 1 and 31.")
+                return
+            self.db.add_routine(frequency="monthly", day_of_week=None, day_of_month=day, time=time, description=description)
+
+        window.destroy()
+        self.refresh_events()
+
+    def open_delete_routine_window(self):
+        delete_routine_window = tk.Toplevel(self.root)
+        delete_routine_window.title("Delete Recurring Event")
+
+        routines = self.db.get_routines()
+        self.selected_routines = []
+
+        checklist_frame = tk.Frame(delete_routine_window)
+        checklist_frame.pack()
+
+        if not routines:
+            tk.Label(delete_routine_window, text="No recurring events found.").pack()
+        else:
+            for routine in routines:
+                var = tk.BooleanVar()
+                self.selected_routines.append((var, routine))
+                checkbox_text = f"{routine[5]} ({routine[1]})"  # 事件 频率
+                tk.Checkbutton(checklist_frame, text=checkbox_text, variable=var).pack(anchor='w')
+
+        delete_button = tk.Button(delete_routine_window, text="Delete Selected",
+                                  command=lambda: self.delete_selected_routines(delete_routine_window))
+        delete_button.pack()
+        self.refresh_events()
+
+    def delete_selected_routines(self, window):
+        """ 删除玩家选中的周期性事件 """
+        to_delete = [routine for var, routine in self.selected_routines if var.get()]
+
+        if not to_delete:
+            return
+
+        for routine in to_delete:
+            frequency, description = routine[1], routine[5]
+            self.db.delete_routine(frequency, description)
+
+        window.destroy()
+        self.refresh_events()
+
+    ############################################################################
