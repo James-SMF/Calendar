@@ -7,7 +7,7 @@ class ScheduleApp:
         self.db = db
         self.root = root
         self.root.title("奶奶的日程提醒")
-        self.root.geometry("500x600")
+        self.root.geometry("680x600")
         self.root.option_add('*Button.foreground', 'black')
 
         # 创建小部件
