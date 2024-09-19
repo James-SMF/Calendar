@@ -16,7 +16,17 @@ class ScheduleApp:
         # 刷新事件列表
         self.refresh_events()
 
+
     def create_widgets(self):
+        button_frame = tk.Frame(self.root)
+        button_frame.pack()
+
+        add_routine_button = tk.Button(button_frame, text="Add Recurring Event", command=self.open_add_routine_window, fg='black')
+        add_routine_button.pack(side=tk.LEFT, padx=10)
+
+        delete_routine_button = tk.Button(button_frame, text="Delete Recurring Event", command=self.open_delete_routine_window, fg='black')
+        delete_routine_button.pack(side=tk.LEFT, padx=10)
+
         tk.Label(self.root, text="Select Date:").pack()
         self.date_entry = DateEntry(self.root, date_pattern="yyyy-mm-dd")
         self.date_entry.pack()
@@ -34,6 +44,7 @@ class ScheduleApp:
 
         self.events_frame = tk.Frame(self.root)
         self.events_frame.pack()
+
 
     def add_event(self):
         date = self.date_entry.get()  # 获取选中的日期
@@ -108,34 +119,6 @@ class ScheduleApp:
         self.refresh_events()
 
     ############################ 周期性任务相关函数 ############################
-
-    def create_widgets(self):
-        button_frame = tk.Frame(self.root)
-        button_frame.pack()
-
-        add_routine_button = tk.Button(button_frame, text="Add Recurring Event", command=self.open_add_routine_window, fg='black')
-        add_routine_button.pack(side=tk.LEFT, padx=10)
-
-        delete_routine_button = tk.Button(button_frame, text="Delete Recurring Event", command=self.open_delete_routine_window, fg='black')
-        delete_routine_button.pack(side=tk.LEFT, padx=10)
-
-        tk.Label(self.root, text="Select Date:").pack()
-        self.date_entry = DateEntry(self.root, date_pattern="yyyy-mm-dd")
-        self.date_entry.pack()
-
-        tk.Label(self.root, text="Time (HH:MM):").pack()
-        self.time_entry = tk.Entry(self.root)
-        self.time_entry.pack()
-
-        tk.Label(self.root, text="Description:").pack()
-        self.desc_entry = tk.Entry(self.root)
-        self.desc_entry.pack()
-
-        add_button = tk.Button(self.root, text="Add Event", command=self.add_event)
-        add_button.pack()
-
-        self.events_frame = tk.Frame(self.root)
-        self.events_frame.pack()
 
     def open_add_routine_window(self):
 
