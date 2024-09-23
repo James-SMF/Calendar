@@ -1,13 +1,14 @@
 import tkinter as tk
 from tkcalendar import DateEntry  # ??DateEntry
 from tkinter import messagebox
+import datetime
 
 class ScheduleApp:
     def __init__(self, root, db):
         self.db = db
         self.root = root
         self.root.title("奶奶的日程提醒")
-        self.root.geometry("500x600")
+        self.root.geometry("700x750")
         self.root.option_add('*Button.foreground', 'black')
 
         # 创建小部件
@@ -16,7 +17,17 @@ class ScheduleApp:
         # 刷新事件列表
         self.refresh_events()
 
+
     def create_widgets(self):
+        button_frame = tk.Frame(self.root)
+        button_frame.pack()
+
+        add_routine_button = tk.Button(button_frame, text="Add Recurring Event", command=self.open_add_routine_window, fg='black')
+        add_routine_button.pack(side=tk.LEFT, padx=10)
+
+        delete_routine_button = tk.Button(button_frame, text="Delete Recurring Event", command=self.open_delete_routine_window, fg='black')
+        delete_routine_button.pack(side=tk.LEFT, padx=10)
+
         tk.Label(self.root, text="Select Date:").pack()
         self.date_entry = DateEntry(self.root, date_pattern="yyyy-mm-dd")
         self.date_entry.pack()
@@ -35,37 +46,66 @@ class ScheduleApp:
         self.events_frame = tk.Frame(self.root)
         self.events_frame.pack()
 
+
     def add_event(self):
         date = self.date_entry.get()  # 获取选中的日期
         time = self.time_entry.get()
         description = self.desc_entry.get()
+        if len(description) > 15:
+            messagebox.showerror("Error", "Description too long! (maximum 15 characters)")
+            return
+
         eid_set = self.db.get_all_eid()
         eid = self.db.generate_new_eid(eid_set)
 
         self.db.add(eid, description, date, time)
 
-        #  self.date_entry.set_date("")  # 清空日期选择器
         self.time_entry.delete(0, tk.END)
         self.desc_entry.delete(0, tk.END)
         self.refresh_events()
 
     def refresh_events(self):
+        # 先删掉现有的
         for widget in self.events_frame.winfo_children():
             widget.destroy()
 
-        events = self.db.get_events()
-        for event in events:
-            event_frame = tk.Frame(self.events_frame)
-            event_frame.pack()
+        current_date = datetime.datetime.now().date()
 
-            event_label = tk.Label(event_frame, text=f"{event.date} {event.time}  {event.event}", anchor='w')
-            event_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        # 获取事件（根据时间排序）
+        events = self.db.get_events()
+        count = 0
+
+        for idx, event in enumerate(events):
+            event_frame = tk.Frame(self.events_frame)
+            event_frame.grid(row=idx, column=0, sticky='w', pady=3)
+
+            # 检查过期/临期事件
+            event_date = datetime.datetime.strptime(event.date, "%Y-%m-%d").date()
+            days_until_event = (event_date - current_date).days
+
+            if event_date < current_date:
+                text_color = 'red'
+                remaining_text = "(已过期)"
+            elif 0 <= days_until_event <= 5:
+                text_color = 'orange'
+                remaining_text = f"(剩余 {days_until_event} 天)"
+            else:
+                text_color = 'black'
+                remaining_text = f"(剩余 {days_until_event} 天)"
+
+            event_label = tk.Label(event_frame, text=f"{remaining_text} {event.date} {event.time}  {event.event}", anchor='w', fg=text_color)
+            event_label.grid(row=0, column=0, sticky='w', padx=3)
 
             delete_button = tk.Button(event_frame, text="Delete", command=lambda e_id=event.eid: self.delete_event(e_id))
-            delete_button.pack(side=tk.LEFT, padx=5)
+            delete_button.grid(row=0, column=1, padx=3)
 
             update_button = tk.Button(event_frame, text="Update", command=lambda e_id=event.eid: self.update_event(e_id))
-            update_button.pack(side=tk.LEFT, padx=5)
+            update_button.grid(row=0, column=2, padx=3)
+            count += 1
+
+            # 最多显示接下来15条事件，专注当下
+            if count > 15:
+                break
 
     def delete_event(self, event_id):
         self.db.remove(event_id)
@@ -109,34 +149,6 @@ class ScheduleApp:
 
     ############################ 周期性任务相关函数 ############################
 
-    def create_widgets(self):
-        button_frame = tk.Frame(self.root)
-        button_frame.pack()
-
-        add_routine_button = tk.Button(button_frame, text="Add Recurring Event", command=self.open_add_routine_window, fg='black')
-        add_routine_button.pack(side=tk.LEFT, padx=10)
-
-        delete_routine_button = tk.Button(button_frame, text="Delete Recurring Event", command=self.open_delete_routine_window, fg='black')
-        delete_routine_button.pack(side=tk.LEFT, padx=10)
-
-        tk.Label(self.root, text="Select Date:").pack()
-        self.date_entry = DateEntry(self.root, date_pattern="yyyy-mm-dd")
-        self.date_entry.pack()
-
-        tk.Label(self.root, text="Time (HH:MM):").pack()
-        self.time_entry = tk.Entry(self.root)
-        self.time_entry.pack()
-
-        tk.Label(self.root, text="Description:").pack()
-        self.desc_entry = tk.Entry(self.root)
-        self.desc_entry.pack()
-
-        add_button = tk.Button(self.root, text="Add Event", command=self.add_event)
-        add_button.pack()
-
-        self.events_frame = tk.Frame(self.root)
-        self.events_frame.pack()
-
     def open_add_routine_window(self):
 
         '''打开添加周期性任务的窗口'''
@@ -166,7 +178,7 @@ class ScheduleApp:
         confirm_button = tk.Button(routine_window, text="Confirm",
                                    command=lambda: self.add_routine(frequency_var.get(), day_entry.get(), time_entry.get(), desc_entry.get(), routine_window))
         confirm_button.pack()
-        self.db.check_and_add_next_routine()
+
         self.refresh_events()
 
     def add_routine(self, frequency, day, time, description, window):
@@ -186,8 +198,14 @@ class ScheduleApp:
                 return
             self.db.add_routine(frequency="monthly", day_of_week=None, day_of_month=day, time=time, description=description)
 
-        window.destroy()
+        # 这个 bug 搞了好久。原理是这样的，生成按钮的时候，add routine的函数没有运行，那如果在那个时候
+        # check and add那啥routine了，会发生什么？在event数据库中会有数据存入，而显示呢，并没有显示。
+        # 当这个add routine函数实际被运行的时候，会检查到这个事件已经在event里了，所以不会进行储存
+        # 这时候就会造成问题。
+        self.db.check_and_add_next_routine()
+
         self.refresh_events()
+        window.destroy()
 
     def open_delete_routine_window(self):
         delete_routine_window = tk.Toplevel(self.root)

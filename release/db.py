@@ -120,13 +120,15 @@ class dbapi:
             # 当前任务是否已经存在，如果不存在，添加任务
             check_cursor = self.db.execute('SELECT * FROM events WHERE date = ? AND time = ? AND event = ?', (next_date, time, description))
             check_list = [i for i in check_cursor]
+            print('cl:',check_list)
             if not check_list:
+                print('event added')
                 eid_set = self.get_all_eid()
                 eid = self.generate_new_eid(eid_set)
                 self.add(eid, description, next_date, time)
 
     def _get_next_weekly_date(self, current_date, day_of_week):
-        days_ahead = day_of_week - current_date.weekday()
+        days_ahead = day_of_week - (current_date.weekday() + 1)
         if days_ahead <= 0:
             days_ahead += 7
         return current_date + datetime.timedelta(days=days_ahead)
