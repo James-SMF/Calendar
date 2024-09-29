@@ -31,7 +31,7 @@ class ScheduleApp:
         refresh_frame = tk.Frame(self.root)
         refresh_frame.pack()
 
-        refresh_button = tk.Button(refresh_frame, text="Refresh", command=self.refresh_events)
+        refresh_button = tk.Button(refresh_frame, text="Refresh", command=self.add_recurring_and_refresh)
         refresh_button.pack(ipady=15, pady=10)
 
         tk.Label(self.root, text="Select Date:").pack()
@@ -96,9 +96,11 @@ class ScheduleApp:
         self.desc_entry.delete(0, tk.END)
         self.refresh_events()
 
-    def refresh_events(self):
+    def add_recurring_and_refresh(self):
         self.db.check_and_add_next_routine()
+        self.refresh_events()
 
+    def refresh_events(self):
         # 先删掉现有的
         for widget in self.events_frame.winfo_children():
             widget.destroy()
@@ -134,6 +136,9 @@ class ScheduleApp:
             delete_button.grid(row=0, column=1, padx=3)
 
             update_button = tk.Button(event_frame, text="Update", command=lambda e_id=event.eid: self.update_event(e_id))
+            update_button.grid(row=0, column=2, padx=3)
+
+            note_button = tk.Button(event_frame, text="Note", command=lambda e_id=event.eid: self.update_event(e_id))
             update_button.grid(row=0, column=2, padx=3)
             count += 1
 
@@ -176,8 +181,34 @@ class ScheduleApp:
         update_button = tk.Button(update_window, text="Update", command=lambda: self.perform_update(event_id, new_desc_entry.get(), new_date_entry.get(), new_time_entry.get(), update_window))
         update_button.pack()
 
-    def perform_update(self, event_id, event, new_date, new_time, update_window):
-        self.db.update_event(event_id, event, new_date, new_time)
+    # TODO：如果update的事件是recurring的，那么
+    def perform_update(self, event_id, description, new_date, new_time, update_window):
+        # 对time的格式进行标准化调整
+        time = re.sub(r'：', r':', time)
+
+        if time.isnumeric():
+            if int(time) > 24 or int(time) < 0:
+                messagebox.showerror("Error", "Time must be between 0 and 24")
+                return
+
+            time += ":00"
+
+        def count_chinese_characters(txt):
+            count = 0
+            for c in txt:
+                if '\u4e00' <= c <= '\u9fff':
+                    count += 1
+            return count
+
+        chinese_char = count_chinese_characters(description)
+        non_chinese_char = len(description) - chinese_char
+        weighted_len_of_description = chinese_char * 1.5 + non_chinese_char
+
+        if weighted_len_of_description > 25:
+            messagebox.showerror("Error", "Description too long!")
+            return
+
+        self.db.update_event(event_id, description, new_date, new_time)
         update_window.destroy()
         self.refresh_events()
 
@@ -261,8 +292,7 @@ class ScheduleApp:
         # check and add那啥routine了，会发生什么？在event数据库中会有数据存入，而显示呢，并没有显示。
         # 当这个add routine函数实际被运行的时候，会检查到这个事件已经在event里了，所以不会进行储存
         # 这时候就会造成问题。
-
-        self.refresh_events()
+        self.add_recurring_and_refresh()
         window.destroy()
 
     def open_delete_routine_window(self):
@@ -311,9 +341,8 @@ class ScheduleApp:
             self.db.delete_routine(frequency, description)
 
             if delete_from_events:
-                next_event = self.db.get_next_event(frequency, description)[0]
-                if next_event:
-                    self.db.remove(next_event.eid)
+                if next_event := self.db.get_next_event(frequency, description):
+                    self.db.remove(next_event[0].eid)
 
         window.destroy()
         self.refresh_events()

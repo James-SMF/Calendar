@@ -29,8 +29,10 @@ class dbapi:
         self.db.commit()
 
     def remove(self, eid):
-        self.db.execute('DELETE FROM events WHERE eid = ?', (eid,))
-        self.db.commit()
+        target_event_id = self.get_event_by_id(eid)
+        if target_event_id:
+            self.db.execute('DELETE FROM events WHERE eid = ?', (eid,))
+            self.db.commit()
 
     def get_events(self):
         cursor = self.db.execute('SELECT * FROM events ORDER BY date, time')
