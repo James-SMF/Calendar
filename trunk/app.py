@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkcalendar import DateEntry  # ??DateEntry
 from tkinter import messagebox
-import datetime
+import datetime, re
 
 class ScheduleApp:
     def __init__(self, root, db):
@@ -28,6 +28,12 @@ class ScheduleApp:
         delete_routine_button = tk.Button(button_frame, text="Delete Recurring Event", command=self.open_delete_routine_window, fg='black')
         delete_routine_button.pack(side=tk.LEFT, padx=10)
 
+        refresh_frame = tk.Frame(self.root)
+        refresh_frame.pack()
+
+        refresh_button = tk.Button(refresh_frame, text="Refresh", command=self.refresh_events)
+        refresh_button.pack(ipady=15, pady=10)
+
         tk.Label(self.root, text="Select Date:").pack()
         self.date_entry = DateEntry(self.root, date_pattern="yyyy-mm-dd")
         self.date_entry.pack()
@@ -50,9 +56,35 @@ class ScheduleApp:
     def add_event(self):
         date = self.date_entry.get()  # 获取选中的日期
         time = self.time_entry.get()
+
+        # 对time的格式进行标准化调整
+        time = re.sub(r'：', r':', time)
+
+        if time.isnumeric():
+            if int(time) > 24 or int(time) < 0:
+                messagebox.showerror("Error", "Time must be between 0 and 24")
+                return
+
+            time += ":00"
+
         description = self.desc_entry.get()
-        if len(description) > 15:
-            messagebox.showerror("Error", "Description too long! (maximum 15 characters)")
+
+        # 对description的长度进行检查
+
+        def count_chinese_characters(txt):
+            count = 0
+            for c in txt:
+                if '\u4e00' <= c <= '\u9fff':
+                    count += 1
+            return count
+
+        chinese_char = count_chinese_characters(description)
+        non_chinese_char = len(description) - chinese_char
+        weighted_len_of_description = chinese_char * 1.5 + non_chinese_char
+
+
+        if weighted_len_of_description > 25:
+            messagebox.showerror("Error", "Description too long!")
             return
 
         eid_set = self.db.get_all_eid()
@@ -65,6 +97,8 @@ class ScheduleApp:
         self.refresh_events()
 
     def refresh_events(self):
+        self.db.check_and_add_next_routine()
+
         # 先删掉现有的
         for widget in self.events_frame.winfo_children():
             widget.destroy()
@@ -186,6 +220,31 @@ class ScheduleApp:
             messagebox.showerror("Input Error", "Day must be a number.")
             return
 
+        # 对time的格式进行标准化调整
+        time = re.sub(r'：', r':', time)
+
+        if time.isnumeric():
+            if int(time) > 24 or int(time) < 0:
+                messagebox.showerror("Error", "Time must be between 0 and 24")
+                return
+
+            time += ":00"
+
+        def count_chinese_characters(txt):
+            count = 0
+            for c in txt:
+                if '\u4e00' <= c <= '\u9fff':
+                    count += 1
+            return count
+
+        chinese_char = count_chinese_characters(description)
+        non_chinese_char = len(description) - chinese_char
+        weighted_len_of_description = chinese_char * 1.5 + non_chinese_char
+
+        if weighted_len_of_description > 25:
+            messagebox.showerror("Error", "Description too long!")
+            return
+
         day = int(day)
         if frequency == "weekly":
             if day < 1 or day > 7:
@@ -202,7 +261,6 @@ class ScheduleApp:
         # check and add那啥routine了，会发生什么？在event数据库中会有数据存入，而显示呢，并没有显示。
         # 当这个add routine函数实际被运行的时候，会检查到这个事件已经在event里了，所以不会进行储存
         # 这时候就会造成问题。
-        self.db.check_and_add_next_routine()
 
         self.refresh_events()
         window.destroy()

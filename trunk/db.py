@@ -120,9 +120,8 @@ class dbapi:
             # 当前任务是否已经存在，如果不存在，添加任务
             check_cursor = self.db.execute('SELECT * FROM events WHERE date = ? AND time = ? AND event = ?', (next_date, time, description))
             check_list = [i for i in check_cursor]
-            print('cl:',check_list)
+
             if not check_list:
-                print('event added')
                 eid_set = self.get_all_eid()
                 eid = self.generate_new_eid(eid_set)
                 self.add(eid, description, next_date, time)
