@@ -53,23 +53,15 @@ class ScheduleApp:
         self.events_frame.pack()
 
 
-    def add_event(self):
-        date = self.date_entry.get()  # 获取选中的日期
-        time = self.time_entry.get()
-
-        # 对time的格式进行标准化调整
+    def time_event_check(self, time, description):
         time = re.sub(r'：', r':', time)
 
         if time.isnumeric():
             if int(time) > 24 or int(time) < 0:
                 messagebox.showerror("Error", "Time must be between 0 and 24")
-                return
+                return (None, None)
 
             time += ":00"
-
-        description = self.desc_entry.get()
-
-        # 对description的长度进行检查
 
         def count_chinese_characters(txt):
             count = 0
@@ -85,6 +77,18 @@ class ScheduleApp:
 
         if weighted_len_of_description > 25:
             messagebox.showerror("Error", "Description too long!")
+            return (None, None)
+
+        return time, description
+
+
+    def add_event(self):
+        date = self.date_entry.get()  # 获取选中的日期
+        time = self.time_entry.get()
+
+        time, description = self.time_event_check(time, self.desc_entry.get())
+
+        if not time and not description:
             return
 
         eid_set = self.db.get_all_eid()
@@ -183,29 +187,9 @@ class ScheduleApp:
 
     # TODO：如果update的事件是recurring的，那么
     def perform_update(self, event_id, description, new_date, new_time, update_window):
-        # 对time的格式进行标准化调整
-        time = re.sub(r'：', r':', time)
+        time, description = self.time_event_check(time, self.desc_entry.get())
 
-        if time.isnumeric():
-            if int(time) > 24 or int(time) < 0:
-                messagebox.showerror("Error", "Time must be between 0 and 24")
-                return
-
-            time += ":00"
-
-        def count_chinese_characters(txt):
-            count = 0
-            for c in txt:
-                if '\u4e00' <= c <= '\u9fff':
-                    count += 1
-            return count
-
-        chinese_char = count_chinese_characters(description)
-        non_chinese_char = len(description) - chinese_char
-        weighted_len_of_description = chinese_char * 1.5 + non_chinese_char
-
-        if weighted_len_of_description > 25:
-            messagebox.showerror("Error", "Description too long!")
+        if not time and not description:
             return
 
         self.db.update_event(event_id, description, new_date, new_time)
@@ -251,29 +235,9 @@ class ScheduleApp:
             messagebox.showerror("Input Error", "Day must be a number.")
             return
 
-        # 对time的格式进行标准化调整
-        time = re.sub(r'：', r':', time)
+        time, description = self.time_event_check(time, self.desc_entry.get())
 
-        if time.isnumeric():
-            if int(time) > 24 or int(time) < 0:
-                messagebox.showerror("Error", "Time must be between 0 and 24")
-                return
-
-            time += ":00"
-
-        def count_chinese_characters(txt):
-            count = 0
-            for c in txt:
-                if '\u4e00' <= c <= '\u9fff':
-                    count += 1
-            return count
-
-        chinese_char = count_chinese_characters(description)
-        non_chinese_char = len(description) - chinese_char
-        weighted_len_of_description = chinese_char * 1.5 + non_chinese_char
-
-        if weighted_len_of_description > 25:
-            messagebox.showerror("Error", "Description too long!")
+        if not time and not description:
             return
 
         day = int(day)
