@@ -10,6 +10,8 @@ class ScheduleApp:
         self.root.title("奶奶的日程提醒")
         self.root.geometry("700x750")
         self.root.option_add('*Button.foreground', 'black')
+        self.BACKGROUND_COLOR = '#ecece7'
+        self.root.configure(background=self.BACKGROUND_COLOR)
 
         # 创建小部件
         self.create_widgets()
@@ -19,37 +21,37 @@ class ScheduleApp:
 
 
     def create_widgets(self):
-        button_frame = tk.Frame(self.root)
+        button_frame = tk.Frame(self.root, bg=self.BACKGROUND_COLOR)
         button_frame.pack()
 
-        add_routine_button = tk.Button(button_frame, text="Add Recurring Event", command=self.open_add_routine_window, fg='black')
+        add_routine_button = tk.Button(button_frame, text="Add Recurring Event", command=self.open_add_routine_window, fg='black', bg=self.BACKGROUND_COLOR)
         add_routine_button.pack(side=tk.LEFT, padx=10)
 
-        delete_routine_button = tk.Button(button_frame, text="Delete Recurring Event", command=self.open_delete_routine_window, fg='black')
+        delete_routine_button = tk.Button(button_frame, text="Delete Recurring Event", command=self.open_delete_routine_window, fg='black', bg=self.BACKGROUND_COLOR)
         delete_routine_button.pack(side=tk.LEFT, padx=10)
 
-        refresh_frame = tk.Frame(self.root)
+        refresh_frame = tk.Frame(self.root, bg=self.BACKGROUND_COLOR)
         refresh_frame.pack()
 
-        refresh_button = tk.Button(refresh_frame, text="Refresh", command=self.add_recurring_and_refresh)
+        refresh_button = tk.Button(refresh_frame, text="Refresh", command=self.add_recurring_and_refresh, bg=self.BACKGROUND_COLOR)
         refresh_button.pack(ipady=15, pady=10)
 
-        tk.Label(self.root, text="Select Date:").pack()
+        tk.Label(self.root, text="Select Date:", bg=self.BACKGROUND_COLOR).pack()
         self.date_entry = DateEntry(self.root, date_pattern="yyyy-mm-dd")
         self.date_entry.pack()
 
-        tk.Label(self.root, text="Time (HH:MM):").pack()
+        tk.Label(self.root, text="Time (HH:MM):", bg=self.BACKGROUND_COLOR).pack()
         self.time_entry = tk.Entry(self.root)
         self.time_entry.pack()
 
-        tk.Label(self.root, text="Description:").pack()
+        tk.Label(self.root, text="Description:", bg=self.BACKGROUND_COLOR).pack()
         self.desc_entry = tk.Entry(self.root)
         self.desc_entry.pack()
 
-        add_button = tk.Button(self.root, text="Add Event", command=self.add_event)
+        add_button = tk.Button(self.root, text="Add Event", command=self.add_event, bg=self.BACKGROUND_COLOR)
         add_button.pack()
 
-        self.events_frame = tk.Frame(self.root)
+        self.events_frame = tk.Frame(self.root, bg=self.BACKGROUND_COLOR)
         self.events_frame.pack()
 
 
@@ -116,7 +118,7 @@ class ScheduleApp:
         count = 0
 
         for idx, event in enumerate(events):
-            event_frame = tk.Frame(self.events_frame)
+            event_frame = tk.Frame(self.events_frame, bg=self.BACKGROUND_COLOR)
             event_frame.grid(row=idx, column=0, sticky='w', pady=3)
 
             # 检查过期/临期事件
@@ -124,25 +126,25 @@ class ScheduleApp:
             days_until_event = (event_date - current_date).days
 
             if event_date < current_date:
-                text_color = 'red'
+                text_color = '#3487f3'
                 remaining_text = "(已过期)"
             elif 0 <= days_until_event <= 5:
-                text_color = 'orange'
+                text_color = '#859224'
                 remaining_text = f"(剩余 {days_until_event} 天)"
             else:
                 text_color = 'black'
                 remaining_text = f"(剩余 {days_until_event} 天)"
 
-            event_label = tk.Label(event_frame, text=f"{remaining_text} {event.date} {event.time}  {event.event}", anchor='w', fg=text_color)
+            event_label = tk.Label(event_frame, text=f"{remaining_text} {event.date} {event.time}  {event.event}", anchor='w', fg=text_color, bg=self.BACKGROUND_COLOR)
             event_label.grid(row=0, column=0, sticky='w', padx=3)
 
-            delete_button = tk.Button(event_frame, text="Delete", command=lambda e_id=event.eid: self.delete_event(e_id))
+            delete_button = tk.Button(event_frame, text="Delete", command=lambda e_id=event.eid: self.delete_event(e_id), bg=self.BACKGROUND_COLOR)
             delete_button.grid(row=0, column=1, padx=3)
 
-            update_button = tk.Button(event_frame, text="Update", command=lambda e_id=event.eid: self.update_event(e_id))
+            update_button = tk.Button(event_frame, text="Update", command=lambda e_id=event.eid: self.update_event(e_id), bg=self.BACKGROUND_COLOR)
             update_button.grid(row=0, column=2, padx=3)
 
-            note_button = tk.Button(event_frame, text="Note", command=lambda e_id=event.eid: self.update_event(e_id))
+            note_button = tk.Button(event_frame, text="Note", command=lambda e_id=event.eid: self.update_event(e_id), bg=self.BACKGROUND_COLOR)
             update_button.grid(row=0, column=2, padx=3)
             count += 1
 

@@ -109,15 +109,28 @@ class dbapi:
 
     def check_and_add_next_routine(self):
         today = datetime.date.today()
+        tomorrow = today + datetime.timedelta(days=1)
+
+        # 如果当前时间已经过点了，那么下一个周期再添加这个事件。
+        def check_time(hour, minute):
+            now = datetime.datetime.now()
+            if now.hour > int(hour) or (now.hour == int(hour) and now.minute >= int(minute)):
+                return tomorrow
+            else:
+                return today
 
         routines = self.get_routines()
         for routine in routines:
             # 获取周期任务
             frequency, day_of_week, day_of_month, time, description = routine[1], routine[2], routine[3], routine[4], routine[5]
+
+            hour, minute = time.split(':')
+            today_or_tomorrow = check_time(hour, minute)
+
             if frequency == 'weekly':
-                next_date = self._get_next_weekly_date(today, day_of_week)
+                next_date = self._get_next_weekly_date(today_or_tomorrow, day_of_week)
             elif frequency == 'monthly':
-                next_date = self._get_next_monthly_date(today, day_of_month)
+                next_date = self._get_next_monthly_date(today_or_tomorrow, day_of_month)
 
             # 当前任务是否已经存在，如果不存在，添加任务
             check_cursor = self.db.execute('SELECT * FROM events WHERE date = ? AND time = ? AND event = ?', (next_date, time, description))
