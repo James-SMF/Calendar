@@ -187,11 +187,10 @@ class ScheduleApp:
         update_button = tk.Button(update_window, text="Update", command=lambda: self.perform_update(event_id, new_desc_entry.get(), new_date_entry.get(), new_time_entry.get(), update_window))
         update_button.pack()
 
-    # TODO：如果update的事件是recurring的，那么
     def perform_update(self, event_id, description, new_date, new_time, update_window):
-        time, description = self.time_event_check(time, self.desc_entry.get())
+        new_time, description = self.time_event_check(new_time, description)
 
-        if not time and not description:
+        if not new_time and not description:
             return
 
         self.db.update_event(event_id, description, new_date, new_time)
@@ -237,7 +236,7 @@ class ScheduleApp:
             messagebox.showerror("Input Error", "Day must be a number.")
             return
 
-        time, description = self.time_event_check(time, self.desc_entry.get())
+        time, description = self.time_event_check(time, description)
 
         if not time and not description:
             return
