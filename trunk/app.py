@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkcalendar import DateEntry  # ??DateEntry
-from tkinter import messagebox
+from tkinter import messagebox, font
 import datetime, re
 
 class ScheduleApp:
@@ -8,7 +8,7 @@ class ScheduleApp:
         self.db = db
         self.root = root
         self.root.title("奶奶的日程提醒")
-        self.root.geometry("700x750")
+        self.root.geometry("900x780")
         self.root.option_add('*Button.foreground', 'black')
         self.BACKGROUND_COLOR = '#ecece7'
         self.root.configure(background=self.BACKGROUND_COLOR)
@@ -17,18 +17,25 @@ class ScheduleApp:
         self.create_widgets()
 
         # 刷新事件列表
-        self.refresh_events()
+        self.add_recurring_and_refresh()
 
 
     def create_widgets(self):
-        button_frame = tk.Frame(self.root, bg=self.BACKGROUND_COLOR)
-        button_frame.pack()
+        button_frame = tk.Frame(self.root)
+        button_frame.pack(pady=10, padx=50)
 
-        add_routine_button = tk.Button(button_frame, text="Add Recurring Event", command=self.open_add_routine_window, fg='black', bg=self.BACKGROUND_COLOR)
-        add_routine_button.pack(side=tk.LEFT, padx=10)
+        add_recurring_button = tk.Button(button_frame, text="Add Recurring Event", command=self.open_add_routine_window)
+        add_recurring_button.grid(row=0, column=1, padx=(225,0))
 
-        delete_routine_button = tk.Button(button_frame, text="Delete Recurring Event", command=self.open_delete_routine_window, fg='black', bg=self.BACKGROUND_COLOR)
-        delete_routine_button.pack(side=tk.LEFT, padx=10)
+        delete_recurring_button = tk.Button(button_frame, text="Delete Recurring Event", command=self.open_delete_routine_window)
+        delete_recurring_button.grid(row=0, column=2)
+
+        diary_button = tk.Button(button_frame, text="Diary", command=self.open_diary_window)
+        diary_button.grid(row=0, column=60, padx=(165, 0), ipady=10)
+
+        #  button_frame.grid_columnconfigure(3, weight=10)
+
+        ######################################################################
 
         refresh_frame = tk.Frame(self.root, bg=self.BACKGROUND_COLOR)
         refresh_frame.pack()
@@ -49,7 +56,7 @@ class ScheduleApp:
         self.desc_entry.pack()
 
         add_button = tk.Button(self.root, text="Add Event", command=self.add_event, bg=self.BACKGROUND_COLOR)
-        add_button.pack()
+        add_button.pack(ipady=5, pady=10)
 
         self.events_frame = tk.Frame(self.root, bg=self.BACKGROUND_COLOR)
         self.events_frame.pack()
@@ -100,7 +107,7 @@ class ScheduleApp:
 
         self.time_entry.delete(0, tk.END)
         self.desc_entry.delete(0, tk.END)
-        self.refresh_events()
+        self.add_recurring_and_refresh()
 
     def add_recurring_and_refresh(self):
         self.db.check_and_add_next_routine()
@@ -127,13 +134,19 @@ class ScheduleApp:
 
             if event_date < current_date:
                 text_color = '#3487f3'
-                remaining_text = "(已过期)"
-            elif 0 <= days_until_event <= 5:
+                remaining_text = "( 已过期 )"
+            elif 2 <= days_until_event <= 5:
                 text_color = '#859224'
-                remaining_text = f"(剩余 {days_until_event} 天)"
+                remaining_text = f"( {days_until_event} 天后 )"
+            elif days_until_event == 1:
+                text_color = '#859224'
+                remaining_text = "( 明天 )"
+            elif days_until_event == 0:
+                text_color = '#a47fde'
+                remaining_text = "( 今天 )"
             else:
                 text_color = 'black'
-                remaining_text = f"(剩余 {days_until_event} 天)"
+                remaining_text = f"( {days_until_event} 天后 )"
 
             event_label = tk.Label(event_frame, text=f"{remaining_text} {event.date} {event.time}  {event.event}", anchor='w', fg=text_color, bg=self.BACKGROUND_COLOR)
             event_label.grid(row=0, column=0, sticky='w', padx=3)
@@ -148,13 +161,13 @@ class ScheduleApp:
             update_button.grid(row=0, column=2, padx=3)
             count += 1
 
-            # 最多显示接下来15条事件，专注当下
-            if count > 15:
+            # 最多显示接下来12条事件，专注当下
+            if count > 11:
                 break
 
     def delete_event(self, event_id):
         self.db.remove(event_id)
-        self.refresh_events()
+        self.add_recurring_and_refresh()
 
     def update_event(self, event_id):
         ''' 更新事件 '''
@@ -195,7 +208,7 @@ class ScheduleApp:
 
         self.db.update_event(event_id, description, new_date, new_time)
         update_window.destroy()
-        self.refresh_events()
+        self.add_recurring_and_refresh()
 
     ############################ 周期性任务相关函数 ############################
 
@@ -205,6 +218,7 @@ class ScheduleApp:
 
         routine_window = tk.Toplevel(self.root)
         routine_window.title("Add Recurring Event")
+        routine_window.geometry("350x300")
 
         tk.Label(routine_window, text="Description:").pack()
         desc_entry = tk.Entry(routine_window)
@@ -311,5 +325,45 @@ class ScheduleApp:
 
         window.destroy()
         self.refresh_events()
+
+    ############################################################################
+
+    ############################### Diary ######################################
+
+    def open_diary_window(self):
+
+        '''打开日记的窗口'''
+
+        diary_window = tk.Toplevel(self.root)
+        diary_window.title("Diary")
+        diary_window.geometry("380x400")
+
+        # 设置日记字体
+        diary_text = tk.Text(diary_window, width=40, height=20)
+        custom_font = font.Font(family="Helvetica", size=16, weight="bold")
+        diary_text.config(font=custom_font)
+
+        diary_text.pack()
+
+        today_diary = self.db.get_diary_today()
+
+        # Open a textbox. If today's diary exists, display it. Otherwise, open an empty one.
+        if not today_diary:
+            diary_text.pack()
+        else:
+            diary_text.pack()
+            for row in today_diary:
+                diary_text.insert(tk.END, row[2] + "\n")
+
+        # When the window is closed, save the changes to the db using the add_diary function
+        def close_diary(window, text_widget):
+            self.db.delete_diary(datetime.date.today())
+            self.db.add_diary(datetime.date.today(), text_widget.get("1.0", tk.END))
+            window.destroy()
+
+        diary_window.protocol("WM_DELETE_WINDOW", lambda: close_diary(diary_window, diary_text))
+
+
+
 
     ############################################################################

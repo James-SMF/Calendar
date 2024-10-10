@@ -24,6 +24,14 @@ class dbapi:
         )
         ''')
 
+        self.db.execute('''
+        CREATE TABLE IF NOT EXISTS diary (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT NOT NULL,
+            content TEXT
+        )
+        ''')
+
     def add(self, eid, event, date, time):
         self.db.execute('INSERT INTO events (eid, event, date, time) VALUES (?, ?, ?, ?)', (eid, event, date, time))
         self.db.commit()
@@ -164,6 +172,36 @@ class dbapi:
 
         return next_date
 
+
+    ############################################################################
+
+    ################################# Diary ####################################
+
+    def add_diary(self, date, content):
+        self.db.execute('INSERT INTO diary (date, content) VALUES (?, ?)', (date, content))
+        self.db.commit()
+
+    def get_diary_today(self):
+        cursor = self.db.execute('SELECT * FROM diary WHERE date = ?', (datetime.date.today(),))
+        diary = []
+        for row in cursor:
+            diary.append(row)
+        return diary
+
+    def get_diary_by_range(self, start_date, end_date):
+        cursor = self.db.execute('SELECT * FROM diary WHERE date BETWEEN ? AND ?', (start_date, end_date))
+        diary = []
+        for row in cursor:
+            diary.append(row)
+        return diary
+
+    def clear_diary(self):
+        self.db.execute('DELETE FROM diary')
+        self.db.commit()
+
+    def delete_diary(self, date):
+        self.db.execute('DELETE FROM diary WHERE date = ?', (date,))
+        self.db.commit()
 
     ############################################################################
 
