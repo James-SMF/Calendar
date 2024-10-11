@@ -338,8 +338,24 @@ class ScheduleApp:
         diary_window.title("Diary")
         diary_window.geometry("380x400")
 
+        diary_frame = tk.Frame(diary_window, width=500, height=800, bg=self.BACKGROUND_COLOR)
+        diary_frame.pack()
+        diary_frame.pack_propagate(False)
+
+        # 设置日记日期
+        date_label = tk.Label(diary_frame, text="Select Date:")
+        date_label.pack()
+
+        date_entry = DateEntry(diary_frame, width=12, background='darkblue',
+                               foreground='white', borderwidth=2, date_pattern="yyyy-mm-dd")
+        date_entry.pack(pady=5)
+
+        # 添加滚动条
+        scrollbar = tk.Scrollbar(diary_frame)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
         # 设置日记字体
-        diary_text = tk.Text(diary_window, width=40, height=20)
+        diary_text = tk.Text(diary_frame, width=70, height=45, yscrollcommand=scrollbar.set)
         custom_font = font.Font(family="Helvetica", size=16, weight="bold")
         diary_text.config(font=custom_font)
 
@@ -348,9 +364,11 @@ class ScheduleApp:
         today_diary = self.db.get_diary_today()
 
         # Open a textbox. If today's diary exists, display it. Otherwise, open an empty one.
-        if not today_diary:
-            diary_text.pack()
-        else:
+        today_exists = bool(today_diary)
+        diary_text.pack()
+
+        if today_exists:
+            # TODO: 获取今日日期，然后修改后保存到今日
             diary_text.pack()
             for row in today_diary:
                 diary_text.insert(tk.END, row[2] + "\n")
@@ -361,7 +379,8 @@ class ScheduleApp:
             self.db.add_diary(datetime.date.today(), text_widget.get("1.0", tk.END))
             window.destroy()
 
-        diary_window.protocol("WM_DELETE_WINDOW", lambda: close_diary(diary_window, diary_text))
+        if not today_exists:
+            diary_window.protocol("WM_DELETE_WINDOW", lambda: close_diary(diary_window, diary_text))
 
 
 
