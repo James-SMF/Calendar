@@ -330,6 +330,15 @@ class ScheduleApp:
 
     ############################### Diary ######################################
 
+    def on_key_press(self, event, text_widget):
+        # 捕捉中文括号的输入
+        if event.keysym == 'parenleft':  # 处理 '('
+            text_widget.insert(tk.INSERT, '（')
+            return "break"
+        elif event.keysym == 'parenright':  # 处理 ')'
+            text_widget.insert(tk.INSERT, '）')
+            return "break"
+
     def open_diary_window(self):
 
         '''打开日记的窗口'''
@@ -338,7 +347,7 @@ class ScheduleApp:
         diary_window.title("Diary")
         diary_window.geometry("380x400")
 
-        diary_frame = tk.Frame(diary_window, width=500, height=800, bg=self.BACKGROUND_COLOR)
+        diary_frame = tk.Frame(diary_window, width=900, height=800, bg=self.BACKGROUND_COLOR)
         diary_frame.pack()
         diary_frame.pack_propagate(False)
 
@@ -356,8 +365,11 @@ class ScheduleApp:
 
         # 设置日记字体
         diary_text = tk.Text(diary_frame, width=70, height=45, yscrollcommand=scrollbar.set)
-        custom_font = font.Font(family="Helvetica", size=16, weight="bold")
+        custom_font = font.Font(family="Microsoft YaHei", size=16, weight="bold")
         diary_text.config(font=custom_font)
+
+        # 绑定键盘事件
+        diary_text.bind("<KeyPress>", lambda event: self.on_key_press(event, diary_text))
 
         diary_text.pack()
 
