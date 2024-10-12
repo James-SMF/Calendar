@@ -181,12 +181,16 @@ class dbapi:
         self.db.execute('INSERT INTO diary (date, content) VALUES (?, ?)', (date, content))
         self.db.commit()
 
-    def get_diary_today(self):
-        cursor = self.db.execute('SELECT * FROM diary WHERE date = ?', (datetime.date.today(),))
+    def get_diary_by_date(self, date):
+        cursor = self.db.execute('SELECT * FROM diary WHERE date = ?', (date,))
         diary = []
         for row in cursor:
             diary.append(row)
         return diary
+
+    def get_diary_today(self):
+        date = datetime.date.today()
+        return self.get_diary_by_date(date)
 
     def get_diary_by_range(self, start_date, end_date):
         cursor = self.db.execute('SELECT * FROM diary WHERE date BETWEEN ? AND ?', (start_date, end_date))

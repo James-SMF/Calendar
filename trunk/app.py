@@ -339,14 +339,13 @@ class ScheduleApp:
             text_widget.insert(tk.INSERT, '）')
             return "break"
 
-    def open_diary_window(self):
 
-        '''打开日记的窗口'''
-
+    def _on_open_diary_window(self):
         diary_window = tk.Toplevel(self.root)
         diary_window.title("Diary")
-        diary_window.geometry("380x400")
+        diary_window.geometry("750x800")
 
+        #  diary_frame = tk.Frame(diary_window)
         diary_frame = tk.Frame(diary_window, width=900, height=800, bg=self.BACKGROUND_COLOR)
         diary_frame.pack()
         diary_frame.pack_propagate(False)
@@ -370,29 +369,55 @@ class ScheduleApp:
 
         # 绑定键盘事件
         diary_text.bind("<KeyPress>", lambda event: self.on_key_press(event, diary_text))
-
         diary_text.pack()
 
-        today_diary = self.db.get_diary_today()
+        # 当用户选择日期之后，立即显示那天的日记
+        self.date_entry.bind("<<DateEntrySelected>>", self.load_diary_by_date)
 
-        # Open a textbox. If today's diary exists, display it. Otherwise, open an empty one.
-        today_exists = bool(today_diary)
-        diary_text.pack()
+        return diary_window, diary_text
 
-        if today_exists:
-            # TODO: 获取今日日期，然后修改后保存到今日
-            diary_text.pack()
-            for row in today_diary:
+
+    def insert_diary_text_by_date(self, date, diary_text):
+        diary = self.db.get_diary_by_date(date)
+
+        if diary:
+            for row in diary:
                 diary_text.insert(tk.END, row[2] + "\n")
+
+    def open_diary_window(self):
+        '''打开日记的窗口，并默认显示今日日记'''
+
+        # Construct the window
+        diary_window, diary_text = self._on_open_diary_window()
+
+        # Display today's diary
+
+        # 测试用
+        # today_date = datetime.date(2024, 10, 14)
+        today_date = datetime.date.today()
+        self.insert_diary_text_by_date(today_date, diary_text)
+
 
         # When the window is closed, save the changes to the db using the add_diary function
         def close_diary(window, text_widget):
-            self.db.delete_diary(datetime.date.today())
-            self.db.add_diary(datetime.date.today(), text_widget.get("1.0", tk.END))
+            self.db.delete_diary(today_date)
+            self.db.add_diary(today_date, text_widget.get("1.0", tk.END))
             window.destroy()
 
-        if not today_exists:
-            diary_window.protocol("WM_DELETE_WINDOW", lambda: close_diary(diary_window, diary_text))
+        diary_window.protocol("WM_DELETE_WINDOW", lambda: close_diary(diary_window, diary_text))
+
+
+    def load_diary_by_date(self, event):
+        date = self.date_entry.get()
+        diary = self.db.get_diary_by_date(date)
+
+        diary_text = tk.Text(self.diary_frame, width=70, height=45)
+        custom_font = font.Font(family="Microsoft YaHei", size=16, weight="bold")
+        diary_text.config(font=custom_font)
+
+        diary_text.pack()
+        for row in diary:
+            diary_text.insert(tk.END, row[2] + "\n")
 
 
 
