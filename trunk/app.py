@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkcalendar import DateEntry  # ??DateEntry
+from tkcalendar import DateEntry
 from tkinter import messagebox, font
 import datetime, re
 
@@ -18,6 +18,11 @@ class ScheduleApp:
 
         # 刷新事件列表
         self.add_recurring_and_refresh()
+
+        # 用于diary部分传参
+        self.diary_window = None
+        self.diary_text = None
+        self.current_date = datetime.date.today()
 
 
     def create_widgets(self):
@@ -46,6 +51,7 @@ class ScheduleApp:
         tk.Label(self.root, text="Select Date:", bg=self.BACKGROUND_COLOR).pack()
         self.date_entry = DateEntry(self.root, date_pattern="yyyy-mm-dd")
         self.date_entry.pack()
+        self.date_entry.focus_set()
 
         tk.Label(self.root, text="Time (HH:MM):", bg=self.BACKGROUND_COLOR).pack()
         self.time_entry = tk.Entry(self.root)
@@ -186,6 +192,8 @@ class ScheduleApp:
         new_date_entry = DateEntry(update_window, date_pattern="yyyy-mm-dd")  # DateEntry
         new_date_entry.set_date(original_date)
         new_date_entry.pack()
+        new_date_entry.focus_set()
+
 
         tk.Label(update_window, text="New Time (HH:MM):").pack()
         new_time_entry = tk.Entry(update_window)
@@ -332,10 +340,10 @@ class ScheduleApp:
 
     def on_key_press(self, event, text_widget):
         # 捕捉中文括号的输入
-        if event.keysym == 'parenleft':  # 处理 '('
+        if event.char == '（':
             text_widget.insert(tk.INSERT, '（')
             return "break"
-        elif event.keysym == 'parenright':  # 处理 ')'
+        elif event.char == '）':
             text_widget.insert(tk.INSERT, '）')
             return "break"
 
@@ -345,7 +353,6 @@ class ScheduleApp:
         diary_window.title("Diary")
         diary_window.geometry("750x800")
 
-        #  diary_frame = tk.Frame(diary_window)
         diary_frame = tk.Frame(diary_window, width=900, height=800, bg=self.BACKGROUND_COLOR)
         diary_frame.pack()
         diary_frame.pack_propagate(False)
@@ -354,72 +361,65 @@ class ScheduleApp:
         date_label = tk.Label(diary_frame, text="Select Date:")
         date_label.pack()
 
-        date_entry = DateEntry(diary_frame, width=12, background='darkblue',
-                               foreground='white', borderwidth=2, date_pattern="yyyy-mm-dd")
+        date_entry = DateEntry(diary_frame, width=12, background='#AAFFAA',
+                               foreground='black', borderwidth=2, date_pattern="yyyy-mm-dd")
         date_entry.pack(pady=5)
+        date_entry.focus_set()
 
         # 添加滚动条
         scrollbar = tk.Scrollbar(diary_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         # 设置日记字体
-        diary_text = tk.Text(diary_frame, width=70, height=45, yscrollcommand=scrollbar.set)
+        diary_text = tk.Text(diary_frame, width=70, height=45, yscrollcommand=scrollbar.set, undo=True)
         custom_font = font.Font(family="Microsoft YaHei", size=16, weight="bold")
         diary_text.config(font=custom_font)
-
-        # 绑定键盘事件
         diary_text.bind("<KeyPress>", lambda event: self.on_key_press(event, diary_text))
         diary_text.pack()
 
-        # 当用户选择日期之后，立即显示那天的日记
-        self.date_entry.bind("<<DateEntrySelected>>", self.load_diary_by_date)
-
-        return diary_window, diary_text
+        return diary_window, diary_text, date_entry
 
 
-    def insert_diary_text_by_date(self, date, diary_text):
+    def insert_diary_text_by_date(self, date):
         diary = self.db.get_diary_by_date(date)
 
         if diary:
             for row in diary:
-                diary_text.insert(tk.END, row[2] + "\n")
+                self.diary_text.insert(tk.END, row[2] + "\n")
 
     def open_diary_window(self):
         '''打开日记的窗口，并默认显示今日日记'''
 
         # Construct the window
-        diary_window, diary_text = self._on_open_diary_window()
+        self.diary_window, self.diary_text, self.date_entry = self._on_open_diary_window()
 
-        # Display today's diary
+        self.db.show_all_diary()
 
         # 测试用
-        # today_date = datetime.date(2024, 10, 14)
-        today_date = datetime.date.today()
-        self.insert_diary_text_by_date(today_date, diary_text)
+        # self.current_date = datetime.date(2024, 10, 14)
+        self.insert_diary_text_by_date(self.current_date)
 
+        # 当用户选择日期之后，立即显示那天的日记
+        self.date_entry.bind("<<DateEntrySelected>>", self.load_diary_by_date)
+        self.diary_text.bind("<KeyPress>", lambda event: self.on_key_press(event, self.diary_text))
+        #  self.diary_window.bind("<Command-z>", lambda event: self.diary_text.edit_undo())
+        #  self.diary_window.bind("<Command-Shift-z>", lambda event: self.diary_text.edit_redo())
 
+        # Close the window and save the diary
+        self.diary_window.protocol("WM_DELETE_WINDOW", lambda: self.close_diary(self.diary_window, self.diary_text))
+
+    def close_diary(self, window, text_widget):
         # When the window is closed, save the changes to the db using the add_diary function
-        def close_diary(window, text_widget):
-            self.db.delete_diary(today_date)
-            self.db.add_diary(today_date, text_widget.get("1.0", tk.END))
-            window.destroy()
-
-        diary_window.protocol("WM_DELETE_WINDOW", lambda: close_diary(diary_window, diary_text))
-
+        self.db.delete_diary(self.current_date)
+        self.db.add_diary(self.current_date, text_widget.get("1.0", tk.END))
+        window.destroy()
 
     def load_diary_by_date(self, event):
-        date = self.date_entry.get()
-        diary = self.db.get_diary_by_date(date)
-
-        diary_text = tk.Text(self.diary_frame, width=70, height=45)
-        custom_font = font.Font(family="Microsoft YaHei", size=16, weight="bold")
-        diary_text.config(font=custom_font)
-
-        diary_text.pack()
-        for row in diary:
-            diary_text.insert(tk.END, row[2] + "\n")
-
-
-
+        '''通过更改current date这个变量来实现日期修改'''
+        self.db.delete_diary(self.current_date)
+        self.db.add_diary(self.current_date, self.diary_text.get("1.0", tk.END))
+        self.diary_text.delete("1.0", tk.END)
+        self.current_date = self.date_entry.get_date()
+        self.insert_diary_text_by_date(self.current_date)
 
     ############################################################################

@@ -181,6 +181,14 @@ class dbapi:
         self.db.execute('INSERT INTO diary (date, content) VALUES (?, ?)', (date, content))
         self.db.commit()
 
+    def show_all_diary(self):
+        cursor = self.db.execute('SELECT date FROM diary')
+        diary = []
+        for row in cursor:
+            diary.append(row)
+
+        print(diary)
+
     def get_diary_by_date(self, date):
         cursor = self.db.execute('SELECT * FROM diary WHERE date = ?', (date,))
         diary = []
