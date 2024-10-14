@@ -393,8 +393,10 @@ class ScheduleApp:
         # Construct the window
         self.diary_window, self.diary_text, self.date_entry = self._on_open_diary_window()
 
-        self.db.show_all_diary()
+        # 先把修改前的日记储存到一个cursor中
+        cursor = self.db.get_all_diary()
 
+        # 把目标日期的日记写入到textbox中并显示出来
         # 测试用
         # self.current_date = datetime.date(2024, 10, 14)
         self.insert_diary_text_by_date(self.current_date)
