@@ -366,6 +366,18 @@ class ScheduleApp:
         date_entry.pack(pady=5)
         date_entry.focus_set()
 
+        # 设置两个按钮：Save Changes 和 discard Changes
+        button_frame = tk.Frame(diary_frame)
+        button_frame.pack(pady=10)
+
+        save_changes_button = tk.Button(button_frame, text="Save Changes",
+                                        command=lambda: self.save_diary_changes(date_entry.get()))
+        save_changes_button.pack(side=tk.LEFT, padx=10)
+
+        discard_changes_button = tk.Button(button_frame, text="discard Changes",
+                                          command=lambda: self.discard_diary_changes())
+        discard_changes_button.pack(side=tk.LEFT, padx=10)
+
         # 添加滚动条
         scrollbar = tk.Scrollbar(diary_frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -422,6 +434,14 @@ class ScheduleApp:
         self.db.add_diary(self.current_date, self.diary_text.get("1.0", tk.END))
         self.diary_text.delete("1.0", tk.END)
         self.current_date = self.date_entry.get_date()
+        self.insert_diary_text_by_date(self.current_date)
+
+    def save_diary_changes(self, date):
+        self.db.delete_diary(date)
+        self.db.add_diary(date, self.diary_text.get("1.0", tk.END))
+
+    def discard_diary_changes(self):
+        self.diary_text.delete("1.0", tk.END)
         self.insert_diary_text_by_date(self.current_date)
 
     ############################################################################
