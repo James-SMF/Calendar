@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkcalendar import DateEntry
-from tkinter import messagebox, font
+from tkinter import messagebox, font, ttk
 import datetime, re
 
 class ScheduleApp:
@@ -11,6 +11,8 @@ class ScheduleApp:
         self.root.geometry("900x780")
         self.root.option_add('*Button.foreground', 'black')
         self.BACKGROUND_COLOR = '#ecece7'
+        style = ttk.Style(self.root)
+        style.theme_use('clam')
         self.root.configure(background=self.BACKGROUND_COLOR)
 
         # 创建小部件
@@ -188,6 +190,9 @@ class ScheduleApp:
         update_window = tk.Toplevel(self.root)
         update_window.title("Update Event")
 
+        style = ttk.Style(update_window)
+        style.theme_use('clam')
+
         tk.Label(update_window, text="New Date:").pack()
         new_date_entry = DateEntry(update_window, date_pattern="yyyy-mm-dd")  # DateEntry
         new_date_entry.set_date(original_date)
@@ -357,6 +362,9 @@ class ScheduleApp:
         diary_frame.pack()
         diary_frame.pack_propagate(False)
 
+        style = ttk.Style(diary_frame)
+        style.theme_use('clam')
+
         # 设置日记日期
         date_label = tk.Label(diary_frame, text="Select Date:")
         date_label.pack()
@@ -365,6 +373,18 @@ class ScheduleApp:
                                foreground='black', borderwidth=2, date_pattern="yyyy-mm-dd")
         date_entry.pack(pady=5)
         date_entry.focus_set()
+
+        # 设置两个按钮：Save Changes 和 discard Changes
+        button_frame = tk.Frame(diary_frame)
+        button_frame.pack(pady=10)
+
+        save_changes_button = tk.Button(button_frame, text="Save Changes",
+                                        command=lambda: self.save_diary_changes(date_entry.get()))
+        save_changes_button.pack(side=tk.LEFT, padx=10)
+
+        discard_changes_button = tk.Button(button_frame, text="discard Changes",
+                                          command=lambda: self.discard_diary_changes())
+        discard_changes_button.pack(side=tk.LEFT, padx=10)
 
         # 添加滚动条
         scrollbar = tk.Scrollbar(diary_frame)
@@ -393,8 +413,10 @@ class ScheduleApp:
         # Construct the window
         self.diary_window, self.diary_text, self.date_entry = self._on_open_diary_window()
 
-        self.db.show_all_diary()
+        # 先把修改前的日记储存到一个cursor中
+        #  cursor = self.db.get_all_diary()
 
+        # 把目标日期的日记写入到textbox中并显示出来
         # 测试用
         # self.current_date = datetime.date(2024, 10, 14)
         self.insert_diary_text_by_date(self.current_date)
@@ -410,16 +432,22 @@ class ScheduleApp:
 
     def close_diary(self, window, text_widget):
         # When the window is closed, save the changes to the db using the add_diary function
-        self.db.delete_diary(self.current_date)
-        self.db.add_diary(self.current_date, text_widget.get("1.0", tk.END))
+        self.save_diary_changes(self.current_date)
         window.destroy()
 
     def load_diary_by_date(self, event):
         '''通过更改current date这个变量来实现日期修改'''
-        self.db.delete_diary(self.current_date)
-        self.db.add_diary(self.current_date, self.diary_text.get("1.0", tk.END))
+        self.save_diary_changes(self.current_date)
         self.diary_text.delete("1.0", tk.END)
         self.current_date = self.date_entry.get_date()
+        self.insert_diary_text_by_date(self.current_date)
+
+    def save_diary_changes(self, date):
+        self.db.delete_diary(date)
+        self.db.add_diary(date, self.diary_text.get("1.0", tk.END).strip())
+
+    def discard_diary_changes(self):
+        self.diary_text.delete("1.0", tk.END)
         self.insert_diary_text_by_date(self.current_date)
 
     ############################################################################
