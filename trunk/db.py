@@ -106,7 +106,7 @@ class dbapi:
             result = self.db.execute("""
                 SELECT * FROM events
                 WHERE event=? AND date >= DATE('now')
-                ORDER BY date ASC, time ASC LIMIT 1
+                ORDER BY date ASC, time ASC
             """, (description,))
 
             for row in result:
@@ -197,10 +197,13 @@ class dbapi:
         return self.get_diary_by_date(date)
 
     def get_diary_by_range(self, start_date, end_date):
-        cursor = self.db.execute('SELECT * FROM diary WHERE date BETWEEN ? AND ?', (start_date, end_date))
+        cursor = self.db.execute('SELECT * FROM diary WHERE date BETWEEN ? AND ? ORDER BY date', (start_date, end_date))
         diary = []
         for row in cursor:
-            diary.append(row)
+            row = list(row)
+            row[2] = row[2].strip()
+            if row[2]:
+                diary.append(row)
         return diary
 
     def clear_diary(self):

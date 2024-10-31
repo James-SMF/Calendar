@@ -1,11 +1,13 @@
 import tkinter as tk
 from tkcalendar import DateEntry
 from tkinter import messagebox, font, ttk
+from diary import diary_hist
 import datetime, re
 
 class ScheduleApp:
     def __init__(self, root, db):
         self.db = db
+        self.diary_sync = diary_hist('./diary_hist', './diary_hist/index.txt')
         self.root = root
         self.root.title("奶奶的日程提醒")
         self.root.geometry("900x780")
@@ -21,6 +23,9 @@ class ScheduleApp:
         # 刷新事件列表
         self.add_recurring_and_refresh()
 
+        # 更新历史日记
+        self.diary_sync.add_hist_diary()
+
         # 用于diary部分传参
         self.diary_window = None
         self.diary_text = None
@@ -28,6 +33,7 @@ class ScheduleApp:
 
 
     def create_widgets(self):
+        '''创建启动窗口'''
         button_frame = tk.Frame(self.root)
         button_frame.pack(pady=10, padx=50)
 
@@ -259,26 +265,29 @@ class ScheduleApp:
         self.refresh_events()
 
     def add_routine(self, frequency, day, time, description, window):
-        if not day.isdigit():
-            messagebox.showerror("Input Error", "Day must be a number.")
-            return
-
         time, description = self.time_event_check(time, description)
 
         if not time and not description:
             return
 
-        day = int(day)
-        if frequency == "weekly":
-            if day < 1 or day > 7:
-                messagebox.showerror("Input Error", "Day of the week must be between 1 and 7.")
+        day_list = day.split(",")
+        for d in day_list:
+            if not d.isdigit():
+                messagebox.showerror("Input Error", "Day must be a number.")
                 return
-            self.db.add_routine(frequency="weekly", day_of_week=day, day_of_month=None, time=time, description=description)
-        elif frequency == "monthly":
-            if day < 1 or day > 31:
-                messagebox.showerror("Input Error", "Day of the month must be between 1 and 31.")
-                return
-            self.db.add_routine(frequency="monthly", day_of_week=None, day_of_month=day, time=time, description=description)
+
+            d = int(d)
+
+            if frequency == "weekly":
+                if d < 1 or d > 7:
+                    messagebox.showerror("Input Error", "day of the week must be between 1 and 7.")
+                    return
+                self.db.add_routine(frequency="weekly", day_of_week=d, day_of_month=None, time=time, description=description)
+            elif frequency == "monthly":
+                if d < 1 or d > 31:
+                    messagebox.showerror("Input Error", "day of the month must be between 1 and 31.")
+                    return
+                self.db.add_routine(frequency="monthly", day_of_week=None, day_of_month=d, time=time, description=description)
 
         # 这个 bug 搞了好久。原理是这样的，生成按钮的时候，add routine的函数没有运行，那如果在那个时候
         # check and add那啥routine了，会发生什么？在event数据库中会有数据存入，而显示呢，并没有显示。
@@ -300,11 +309,14 @@ class ScheduleApp:
         if not routines:
             tk.Label(delete_routine_window, text="No recurring events found.").pack()
         else:
+            seen = set()
             for routine in routines:
                 var = tk.BooleanVar()
                 self.selected_routines.append((var, routine))
                 checkbox_text = f"{routine[5]} ({routine[1]})"  # 事件 频率
-                tk.Checkbutton(checklist_frame, text=checkbox_text, variable=var).pack(anchor='w')
+                if checkbox_text not in seen:
+                    tk.Checkbutton(checklist_frame, text=checkbox_text, variable=var).pack(anchor='w')
+                seen.add(checkbox_text)
 
         button_frame = tk.Frame(delete_routine_window)
         button_frame.pack(pady=10)
@@ -332,9 +344,11 @@ class ScheduleApp:
             frequency, description = routine[1], routine[5]
             self.db.delete_routine(frequency, description)
 
+            # TODO：同时从日程表中删除时，遍历并删除所有同名的recurring事件
             if delete_from_events:
                 if next_event := self.db.get_next_event(frequency, description):
-                    self.db.remove(next_event[0].eid)
+                    for e in next_event:
+                        self.db.remove(e.eid)
 
         window.destroy()
         self.refresh_events()
@@ -353,6 +367,18 @@ class ScheduleApp:
             return "break"
 
 
+    def back_to_today(self, date_entry):
+        # save current date changes
+        date_on_manifest = date_entry.get_date()
+        self.save_diary_changes(date_on_manifest)
+
+        # back to today
+        self.diary_text.delete("1.0", tk.END)
+        self.current_date = datetime.date.today()
+        self.insert_diary_text_by_date(self.current_date)
+        date_entry.set_date(self.current_date)
+
+
     def _on_open_diary_window(self):
         diary_window = tk.Toplevel(self.root)
         diary_window.title("Diary")
@@ -367,12 +393,20 @@ class ScheduleApp:
 
         # 设置日记日期
         date_label = tk.Label(diary_frame, text="Select Date:")
-        date_label.pack()
+        date_label.pack(pady=(10, 0))
 
-        date_entry = DateEntry(diary_frame, width=12, background='#AAFFAA',
+        date_frame = tk.Frame(diary_frame)
+        date_frame.pack()
+
+        # 日期选择
+        date_entry = DateEntry(date_frame, width=12, background='#AAFFAA',
                                foreground='black', borderwidth=2, date_pattern="yyyy-mm-dd")
-        date_entry.pack(pady=5)
-        date_entry.focus_set()
+        date_entry.grid(row=0, column=1, padx=(235, 100))
+
+        # 快速回到今日
+        back_to_today_button = tk.Button(date_frame, text="Back to Today",
+                                          command=lambda: self.back_to_today(date_entry))
+        back_to_today_button.grid(row=0, column=2, padx=(20, 0))
 
         # 设置两个按钮：Save Changes 和 discard Changes
         button_frame = tk.Frame(diary_frame)
@@ -449,5 +483,6 @@ class ScheduleApp:
     def discard_diary_changes(self):
         self.diary_text.delete("1.0", tk.END)
         self.insert_diary_text_by_date(self.current_date)
+
 
     ############################################################################
