@@ -9,7 +9,7 @@ class ScheduleApp:
         self.db = db
         self.diary_sync = diary_hist('./diary_hist', './diary_hist/index.txt')
         self.root = root
-        self.root.title("奶奶的日程提醒")
+        self.root.title("朱振亿日程提醒")
         self.root.geometry("900x780")
         self.root.option_add('*Button.foreground', 'black')
         self.BACKGROUND_COLOR = '#ecece7'
@@ -453,6 +453,7 @@ class ScheduleApp:
         # 把目标日期的日记写入到textbox中并显示出来
         # 测试用
         # self.current_date = datetime.date(2024, 10, 14)
+        self.current_date = datetime.date.today()
         self.insert_diary_text_by_date(self.current_date)
 
         # 当用户选择日期之后，立即显示那天的日记
@@ -466,7 +467,12 @@ class ScheduleApp:
 
     def close_diary(self, window, text_widget):
         # When the window is closed, save the changes to the db using the add_diary function
-        self.save_diary_changes(self.current_date)
+        # bug: 这里应该分类讨论。如果用户当前停留在今日，关闭了界面，那么就可以直接保存
+        # 如果用户关闭界面的时候停留在别的日期，那么就不要保存。但是在切换日期的时候应该有
+        # 保存的逻辑
+        current_date = self.date_entry.get_date()
+        if current_date == self.current_date:
+            self.save_diary_changes(self.current_date)
         window.destroy()
 
     def load_diary_by_date(self, event):
